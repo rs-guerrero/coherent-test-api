@@ -10,7 +10,6 @@ import com.coherent.test.task.infrastructure.adapter.repository.ReservationRepos
 import io.vavr.control.Either;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -34,8 +34,10 @@ public class ReservationServiceImpl implements ReservationService {
 
     private Set<Reservation> reservations;
 
+    // Load data from repositories on application startup
     @PostConstruct
     public void loadDataOnStartup() {
+        log.info("Loading data on application startup...");
         reservations = reservationRepository.findAll()
                 .stream()
                 .map(item -> {
@@ -43,23 +45,31 @@ public class ReservationServiceImpl implements ReservationService {
                             .stream().map(ReservationDates::getReservationDate).toList();
                     return new Reservation(item.getReservationId(), item.getClientFullName(), item.getRoomNumber(), resDates);
                 }).collect(Collectors.toSet());
+        log.info("Data loaded successfully.");
     }
 
     @Override
     public Either<Error, Set<Reservation>> createReservation(Reservation reservation) {
+        // Validation for required fields in Reservation
         if (StringUtils.isEmpty(reservation.clientFullName()) || reservation.roomNumber() == 0 || reservation.reservationDates().isEmpty()) {
+            log.error("Invalid reservation data received for creation: {}", reservation);
             return Either.left(Error.builder()
                     .message("All the element of Reservation must be present")
                     .httpStatus(HttpStatus.BAD_REQUEST)
                     .build());
         }
+        // Add reservation to the in-memory set and save it to the database
+        log.info("Creating reservation: {}", reservation);
         reservations.add(reservation);
         saveReservation(reservation);
+        log.info("Creating reservation: {}", reservation);
         return getAllReservations();
 
     }
 
+    // Save Reservation data to the database
     public void saveReservation(Reservation reservation) {
+        log.info("Saving reservation to the database: {}", reservation);
         ReservationEntity entity = new ReservationEntity();
         entity.setReservationId(reservation.id());
         entity.setClientFullName(reservation.clientFullName());
@@ -74,17 +84,20 @@ public class ReservationServiceImpl implements ReservationService {
             rd.setReservationDate(item);
             reservationDatesRepository.save(rd);
         });
-
+        log.info("Reservation saved to the database successfully.");
     }
 
     @Override
     public Either<Error, Set<Reservation>> getAllReservations() {
+        // Check if reservations are empty and return an error if so
         if (reservations.isEmpty()) {
+            log.warn("No reservations found");
             return Either.left(Error.builder()
                     .message("Reservations not found")
                     .httpStatus(HttpStatus.NOT_FOUND)
                     .build());
         }
+        log.info("Returning all reservations: {}", reservations);
         return Either.right(reservations);
 
     }
@@ -92,7 +105,9 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public Either<Error, Set<Reservation>> updateReservationById(Reservation dto, int id) {
+        // Validation for required fields in Reservation
         if (StringUtils.isEmpty(dto.clientFullName()) || dto.roomNumber() == 0 || dto.reservationDates().isEmpty()) {
+            log.error("Invalid reservation data received for update: {}", dto);
             return Either.left(Error.builder()
                     .message("All the element of Reservation must be present")
                     .httpStatus(HttpStatus.BAD_REQUEST)
@@ -106,23 +121,27 @@ public class ReservationServiceImpl implements ReservationService {
             if (item.id() == id) {
                 atomicBoolean.set(Boolean.TRUE);
                 iterator.remove();
-                log.info("Reserva con ID " + id + " eliminada.");
-                reservations.add(dto);
+
             }
         }
         if (!atomicBoolean.get()) {
+            log.warn("Reservation with ID {} not found for update", id);
             return Either.left(Error.builder()
                     .message("Supplied ID not found")
                     .httpStatus(HttpStatus.NOT_FOUND)
                     .build());
         }
+        log.info("Reservation with ID {} updated. New data: {}", id, dto);
+        reservations.add(dto);
         return getAllReservations();
 
     }
 
+    // Save data to the database on application shutdown
     @PreDestroy
     public void saveDataInDB() {
         if (!reservations.isEmpty()) {
+            log.info("Saving data to the database on application shutdown...");
             reservationRepository.deleteAll();
             reservationDatesRepository.deleteAll();
             AtomicInteger accumulator = new AtomicInteger(0);
@@ -141,8 +160,7 @@ public class ReservationServiceImpl implements ReservationService {
                     reservationDatesRepository.save(rd);
                 });
             });
-
-
+            log.info("Data saved to the database successfully.");
         }
     }
 }
