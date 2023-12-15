@@ -1,0 +1,5 @@
+server:
+  port: 9089
+  servlet:
+    context-path: /coherent-hotel
+
