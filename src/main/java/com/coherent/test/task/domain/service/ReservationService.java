@@ -14,4 +14,6 @@ public interface ReservationService {
 
     Either<Error, Set<Reservation>> updateReservationById(Reservation reservation, int id);
 
+    void saveDataInDB();
+
 }

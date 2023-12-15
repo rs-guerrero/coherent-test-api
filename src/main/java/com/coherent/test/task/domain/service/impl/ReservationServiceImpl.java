@@ -9,11 +9,14 @@ import com.coherent.test.task.infrastructure.adapter.repository.ReservationDates
 import com.coherent.test.task.infrastructure.adapter.repository.ReservationRepository;
 import io.vavr.control.Either;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -51,7 +54,7 @@ public class ReservationServiceImpl implements ReservationService {
                     .build());
         }
         reservations.add(reservation);
-         saveReservation(reservation);
+        saveReservation(reservation);
         return getAllReservations();
 
     }
@@ -115,5 +118,31 @@ public class ReservationServiceImpl implements ReservationService {
         }
         return getAllReservations();
 
+    }
+
+    @PreDestroy
+    public void saveDataInDB() {
+        if (!reservations.isEmpty()) {
+            reservationRepository.deleteAll();
+            reservationDatesRepository.deleteAll();
+            AtomicInteger accumulator = new AtomicInteger(0);
+            reservations.forEach(item -> {
+                ReservationEntity entity = new ReservationEntity();
+                entity.setReservationId(item.id());
+                entity.setClientFullName(item.clientFullName());
+                entity.setRoomNumber(item.roomNumber());
+                reservationRepository.save(entity);
+
+                item.reservationDates().forEach(x -> {
+                    ReservationDates rd = new ReservationDates();
+                    rd.setReservation(entity);
+                    rd.setResDateId(accumulator.addAndGet(1));
+                    rd.setReservationDate(x);
+                    reservationDatesRepository.save(rd);
+                });
+            });
+
+
+        }
     }
 }
