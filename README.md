@@ -16,4 +16,4 @@ To set up the backend locally, follow these steps:
 
 1. Clone the repository: `git clone https://github.com/rs-guerrero/coherent-test-api.git`
 2. Start the app.
-3. Swaggwer: http://localhost:9089/coherent-hotel/swagger-ui/index.html
+3. Swagger: http://localhost:9089/coherent-hotel/swagger-ui/index.html
