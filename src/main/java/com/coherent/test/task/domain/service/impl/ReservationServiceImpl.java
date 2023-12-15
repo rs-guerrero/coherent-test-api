@@ -61,30 +61,10 @@ public class ReservationServiceImpl implements ReservationService {
         // Add reservation to the in-memory set and save it to the database
         log.info("Creating reservation: {}", reservation);
         reservations.add(reservation);
-        saveReservation(reservation);
+
         log.info("Creating reservation: {}", reservation);
         return getAllReservations();
 
-    }
-
-    // Save Reservation data to the database
-    public void saveReservation(Reservation reservation) {
-        log.info("Saving reservation to the database: {}", reservation);
-        ReservationEntity entity = new ReservationEntity();
-        entity.setReservationId(reservation.id());
-        entity.setClientFullName(reservation.clientFullName());
-        entity.setRoomNumber(reservation.roomNumber());
-        reservationRepository.save(entity);
-
-        AtomicInteger accumulator = new AtomicInteger(0);
-        reservation.reservationDates().forEach(item -> {
-            ReservationDates rd = new ReservationDates();
-            rd.setReservation(entity);
-            rd.setResDateId(accumulator.addAndGet(1));
-            rd.setReservationDate(item);
-            reservationDatesRepository.save(rd);
-        });
-        log.info("Reservation saved to the database successfully.");
     }
 
     @Override
@@ -138,13 +118,12 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     // Save data to the database on application shutdown
-    @PreDestroy
+   @Override
     public void saveDataInDB() {
         if (!reservations.isEmpty()) {
             log.info("Saving data to the database on application shutdown...");
-            reservationRepository.deleteAll();
-            reservationDatesRepository.deleteAll();
             AtomicInteger accumulator = new AtomicInteger(0);
+
             reservations.forEach(item -> {
                 ReservationEntity entity = new ReservationEntity();
                 entity.setReservationId(item.id());

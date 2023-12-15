@@ -17,5 +17,6 @@ public class ShutdownListener implements DisposableBean {
     public void destroy() throws Exception {
         log.info("just before to stop...");
         service.saveDataInDB();
+
     }
 }
